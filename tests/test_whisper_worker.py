@@ -517,25 +517,37 @@ class TestWhisperWorkerErrorHandling:
         assert proc.returncode != 0
 
     def test_missing_whisper_exits_nonzero(self):
-        """Without fake whisper on path, real whisper likely absent in test env."""
-        import os
-        env = {**os.environ}
-        # Remove any PYTHONPATH that might have fake whisper
-        env.pop("PYTHONPATH", None)
-        args = json.dumps({"path": "/fake/audio.wav"})
-        proc = subprocess.run(
-            [sys.executable, str(WORKER_PATH), args],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            env=env,
-        )
-        # Either whisper is installed (returncode=0) or not (returncode=2)
-        # What we assert is that if it exits non-zero, the error goes to stderr not stdout
-        if proc.returncode != 0:
-            assert proc.stdout.strip() == "" or not proc.stdout.strip(), (
-                "Error messages should go to stderr, not stdout"
+        """Both backends genuinely unavailable → clean nonzero exit, no stdout noise.
+
+        Originally relied on "real whisper likely absent in test env" — true on a
+        machine that happens not to have it pip-installed, but not guaranteed, and
+        false on any environment (e.g. CI's `uv sync --all-extras`) that installs
+        the full whisper/whisperx stack. There the worker would find a real
+        faster-whisper backend, start downloading model weights for a genuine
+        transcription attempt, and blow the 10s timeout instead of exiting fast —
+        the failure only ever surfaced on a truly fresh environment. Fixed by
+        forcing BOTH backends to raise ImportError deterministically via the same
+        PYTHONPATH-stub technique _run_worker() already uses elsewhere in this
+        file, so the "missing whisper" path is exercised for real regardless of
+        what's actually installed.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, "whisper.py"), "w") as f:
+                f.write('raise ImportError("whisper mocked out in tests")\n')
+            with open(os.path.join(tmpdir, "faster_whisper.py"), "w") as f:
+                f.write(_FAKE_FASTER_WHISPER_STUB)
+            env = {**os.environ, "PYTHONPATH": tmpdir + os.pathsep + os.environ.get("PYTHONPATH", "")}
+            args = json.dumps({"path": "/fake/audio.wav"})
+            proc = subprocess.run(
+                [sys.executable, str(WORKER_PATH), args],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=env,
             )
+        assert proc.returncode != 0
+        assert proc.stdout.strip() == "", "Error messages should go to stderr, not stdout"
 
 
 # ── Fix 1: seg_id stamped on raw word tokens ─────────────────────────────────
