@@ -404,7 +404,19 @@ def group_word_tokens(words: list[dict], max_gap_s: float = 0.05) -> list[dict]:
                 _halfwidth((w.get("word") or w.get("text") or "").strip()) for w in group
             ),
             "seg_id":     group[0].get("seg_id"),
-            "confidence": min(confs) if confs else None,
+            # Average, not min: Whisper often tokenizes Japanese character-by-
+            # character, so a multi-char group here is common, and
+            # per-character CTC alignment scores are individually noisy
+            # (short kana, geminate っ, particles legitimately score lower
+            # even when correctly transcribed). min() meant a single noisy
+            # character dragged the WHOLE word down to its score, and with
+            # enough characters per group the odds that at least one is a low
+            # outlier are high regardless of overall transcription quality —
+            # flagged ~100 words in a 20-minute transcript Rio confirmed was
+            # "just OK", swamping the low-confidence indicator's signal with
+            # noise (Rio, 2026-07-20). Average is more representative of the
+            # group as a whole.
+            "confidence": sum(confs) / len(confs) if confs else None,
         }
 
     result: list[dict] = []

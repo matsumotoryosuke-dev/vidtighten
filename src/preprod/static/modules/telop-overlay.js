@@ -129,6 +129,7 @@ function _intVal(id, def) {
 
 function _rebuild() {
   _cache.clear();
+  _naturalTextWidthCache.clear();
   if (!S.telopEntries.length) return;
   const sz    = Math.max(1, _intVal('t-font-size', 80));   // guard: sz=0 → Infinity
   const resW  = parseInt(($('t-res')?.value || '3840x2160').split('x')[0], 10) || 3840;
@@ -179,6 +180,39 @@ function _naturalLineHeight(fontFamily, fontSize) {
   const h = _lineHeightProbe.getBoundingClientRect().height || fontSize * 1.35;
   _naturalLineHeightCache.set(key, h);
   return h;
+}
+
+// _textEl is `position:absolute` with only `left` set (centered via a
+// translate(-50%) transform, not `right`), and `width:auto` with only
+// `max-width` set does NOT reliably shrink-to-fit its actual multi-line
+// content in this configuration — observed rendering at roughly half the
+// panel width regardless of content or how generous max-width was made,
+// forcing every _wrapTelop-decided line to re-wrap into extra browser-level
+// soft-wrapped lines (2026-07-20, live-verified; root cause of the CSS
+// auto-width algorithm not fully pinned down, but explicit `width` reliably
+// fixes it where max-width alone did not). Same probe technique as
+// _naturalLineHeight above — measure the actual widest line in a hidden
+// span, then set width explicitly instead of trusting auto-sizing.
+let _textWidthProbe = null;
+const _naturalTextWidthCache = new Map();
+
+function _naturalTextWidth(fontFamily, fontSize, text) {
+  const key = `${fontFamily}|${fontSize}|${text}`;
+  const cached = _naturalTextWidthCache.get(key);
+  if (cached != null) return cached;
+  if (!_textWidthProbe) {
+    _textWidthProbe = document.createElement('span');
+    _textWidthProbe.style.cssText =
+      'position:absolute;visibility:hidden;top:-9999px;left:-9999px;' +
+      'font-weight:bold;white-space:pre;';   // pre: respects \n, never auto-wraps
+    document.body.appendChild(_textWidthProbe);
+  }
+  _textWidthProbe.style.fontFamily = fontFamily;
+  _textWidthProbe.style.fontSize   = `${fontSize}px`;
+  _textWidthProbe.textContent = text;
+  const w = _textWidthProbe.getBoundingClientRect().width;
+  _naturalTextWidthCache.set(key, w);
+  return w;
 }
 
 // ── Selection state ───────────────────────────────────────────────────────────
@@ -285,11 +319,32 @@ function _applyStyle() {
     scale = rH / exportH;
   }
   const posY    = _intVal('t-pos-y',          -420);
-  const fontSz  = Math.max(8, Math.round(Math.max(1, _intVal('t-font-size', 92)) * scale));
+  // FCP's Basic Title generator does NOT map its Size/Position fields 1:1 to
+  // pixels at the project's native resolution — confirmed by comparing this
+  // preview against a real FCP import (Rio, 2026-07-20):
+  //  - font_size=92 on a 4K/2160px project rendered text at roughly 8-9% of
+  //    frame height in FCP, vs. the ~4.3% this scale alone predicts (92/2160).
+  //  - posY=-420 on the same project sat the text at roughly 80% down the
+  //    frame in FCP, vs. ~63-65% this scale alone produces — live-tested by
+  //    doubling just the offset-from-center term and landing within ~1
+  //    percentage point of the target.
+  // Both match FCP's well-documented pattern of calibrating its title
+  // generator against a reference resolution below the project's actual one
+  // — a clean 2x is consistent with FCP referencing an HD-equivalent (1080p)
+  // design space even on a 4K timeline (2160/1080 = 2 exactly), and it would
+  // be an odd inconsistency for FCP to apply that referencing to Size but not
+  // Position within the same generator. lineSp is NOT included here — it
+  // hasn't been checked against a real FCP comparison the way size/position
+  // just were, so it stays as-is rather than assuming it needs the same fix.
+  const FCP_TITLE_COORD_SCALE = 2;
+  const fontSz  = Math.max(8, Math.round(Math.max(1, _intVal('t-font-size', 92)) * scale * FCP_TITLE_COORD_SCALE));
   const lineSp  = Math.round(_intVal('t-line-spacing', -65) * scale);
 
-  // FCP Y-axis: positive = up → CSS top: positive = down → negate posY
-  const cssTop  = rY + rH / 2 - posY * scale;
+  // FCP Y-axis: positive = up → CSS top: positive = down → negate posY.
+  // Only the offset-from-center is scaled by FCP_TITLE_COORD_SCALE, not rH/2
+  // itself — rH/2 is a real preview-panel pixel (the vertical center of the
+  // rendered video rect), not an FCP coordinate-space value.
+  const cssTop  = rY + rH / 2 - posY * scale * FCP_TITLE_COORD_SCALE;
   const cssLeft = rX + rW / 2;
 
   const fontFamily = `"${$('t-font')?.value ?? 'Hiragino Sans'}", "Hiragino Sans", sans-serif`;
@@ -306,19 +361,32 @@ function _applyStyle() {
   // without stacking them.
   const naturalLH = _naturalLineHeight(fontFamily, fontSz);
 
-  // _rebuild()'s _wrapTelop call assumes each of its (at most 2) lines fits
-  // within 42% of the canvas width (same 0.42 constant as maxEm there) — but
-  // _textEl had no width constraint, so the browser was free to shrink it to
-  // whatever "preferred width" it liked and CJK text has no spaces to hint
-  // that, letting a single logical line re-wrap into extra visual lines.
-  const maxWidthPx = rW * 0.42;
+  // _textEl's <span> needs SOME width constraint, or the browser is free to
+  // shrink it to whatever "preferred width" it likes for pre-line-wrapped
+  // CJK text (no spaces to hint a narrower wrap point), letting a single
+  // _wrapTelop-decided logical line re-wrap into extra visual lines (Round 7,
+  // originally fixed with `max-width`). That stopped being reliable once this
+  // element's actual configuration was examined closely (2026-07-20): with
+  // `width:auto` and only `left` set (not `right`, centered instead via the
+  // translate(-50%) transform), the browser's shrink-to-fit resolved to
+  // roughly HALF the panel width regardless of content or how generous
+  // max-width was made — max-width was never the actual constraint, so no
+  // amount of tuning its value (0.42 → 0.9 → 0.98, each tried and verified
+  // insufficient in turn) could have fixed it. `width: fit-content` and
+  // explicit `display: inline-block` didn't change the outcome either; a
+  // literal `width: 400px` did. So: measure the real natural width (same
+  // hidden-probe technique as _naturalLineHeight above) and set an explicit
+  // width instead of trusting any auto-sizing keyword — capped at the
+  // rendered video width as a sane ceiling for pathologically long text.
+  const naturalW = _naturalTextWidth(fontFamily, fontSz, _textEl.textContent);
+  const widthPx  = Math.min(naturalW, rW * 0.98);
 
   // Dynamic styles only — static props (fontWeight, textAlign, whiteSpace,
   // textShadow, transform) are applied once in initTelopOverlay.
   Object.assign(_textEl.style, {
     top:        `${cssTop}px`,
     left:       `${cssLeft}px`,
-    maxWidth:   `${maxWidthPx}px`,
+    width:      `${widthPx}px`,
     fontFamily,
     fontSize:   `${fontSz}px`,
     color:      $('t-font-color')?.value ?? '#F3B500',

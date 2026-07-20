@@ -996,7 +996,11 @@ class TestGroupWordTokens:
         assert result[1]["text"] == "is"
         assert result[2]["text"] == "nice"
 
-    def test_confidence_takes_minimum(self):
+    def test_confidence_takes_average(self):
+        """Average, not min — a single noisy character shouldn't drag a whole
+        multi-char word's displayed confidence down to its own low score (a
+        real Rio report: min() flagged ~100 words as low-confidence in a
+        20-minute transcript that was "just OK", 2026-07-20)."""
         words = [
             _wt("今", 0.0, 0.1, confidence=0.9),
             _wt("日", 0.11, 0.2, confidence=0.4),
@@ -1004,7 +1008,7 @@ class TestGroupWordTokens:
         ]
         result = group_word_tokens(words)
         assert len(result) == 1
-        assert result[0]["confidence"] == 0.4
+        assert result[0]["confidence"] == pytest.approx((0.9 + 0.4 + 0.8) / 3)
 
     def test_single_cjk_token_not_artificially_grouped(self):
         # A lone CJK character with a large gap before the next one stays alone
@@ -1068,8 +1072,8 @@ class TestGroupWordTokens:
         ]
         result = group_word_tokens(words)
         assert len(result) == 1
-        # confidence = min(0.95, 0.92, 0.40) = 0.40
-        assert result[0]["confidence"] == pytest.approx(0.40)
+        # confidence = average(0.95, 0.92, 0.40)
+        assert result[0]["confidence"] == pytest.approx((0.95 + 0.92 + 0.40) / 3)
 
     def test_confidence_preferred_over_score(self):
         """When both keys are present, 'confidence' takes priority."""
@@ -1081,8 +1085,8 @@ class TestGroupWordTokens:
         ]
         result = group_word_tokens(words)
         assert len(result) == 1
-        # confidence key wins; min(0.80, 0.70) = 0.70
-        assert result[0]["confidence"] == pytest.approx(0.70)
+        # confidence key wins over score; average(0.80, 0.70) = 0.75
+        assert result[0]["confidence"] == pytest.approx(0.75)
 
     def test_zero_confidence_kept_not_treated_as_absent(self):
         """confidence=0.0 is falsy but present — must not be swapped for 'score'.
@@ -1098,8 +1102,9 @@ class TestGroupWordTokens:
         ]
         result = group_word_tokens(words)
         assert len(result) == 1
-        # confidence wins (is not None), min(0.0, 0.5) = 0.0
-        assert result[0]["confidence"] == pytest.approx(0.0)
+        # confidence wins (is not None); average(0.0, 0.5) = 0.25 — the 0.0
+        # must actually be included in the average, not silently dropped
+        assert result[0]["confidence"] == pytest.approx(0.25)
 
     def test_seg_id_boundary_never_merged(self):
         """Tokens from different Whisper segments must never be merged, even < 50ms apart.
