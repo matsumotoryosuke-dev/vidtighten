@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidTighten</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0c12'/><rect x='4' y='13' width='7' height='9' rx='1.5' fill='%2322c55e'/><rect x='13' y='9' width='5' height='16' rx='1.5' fill='%23f43f5e'/><rect x='21' y='6' width='7' height='20' rx='1.5' fill='%2322c55e'/></svg>">
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+/* ── Reset & tokens ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+
+:root{
+  /* Kuuki Design System tokens */
+  --bg:        #131313;   /* void */
+  --s1:        #1D1D1D;   /* ink-900 / bg-raised */
+  --s2:        #272727;   /* ink-800 / bg-panel */
+  --s3:        #2E2E2E;   /* surface-container */
+  --s4:        #3A3A3A;   /* surface-container-high */
+  --border:    rgba(107,110,114,0.30);  /* border-ghost */
+  --border2:   rgba(107,110,114,0.18);
+  --text:      rgba(255,255,255,0.90);  /* fg-1 */
+  --text2:     rgba(255,255,255,0.60);  /* fg-2 */
+  --text3:     rgba(255,255,255,0.30);  /* fg-3 */
+  --accent:    #FFB3B0;   /* muted-red — primary accent */
+  --accent-h:  #E69997;   /* primary-container hover */
+  --green:     #9ED0CF;   /* technical-teal — kept/success */
+  --green-bg:  rgba(158,208,207,.12);
+  --red:       #FFB3B0;   /* muted-red */
+  --red-bg:    rgba(255,179,176,.12);
+  --amber:     #CFC0E8;   /* atmospheric-purple — fillers */
+  --amber-bg:  rgba(207,192,232,.12);
+  --r:         0px;       /* Kuuki is flat — no rounded corners */
+  --r-sm:      0px;
+  --toolbar-h: 48px;
+  --footer-h:  44px;
+}
+
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);font-size:16px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s4);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+button{font:inherit;cursor:pointer;border:none;background:none;outline:none}
+.btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:var(--r-sm);
+  border:1px solid var(--border);background:var(--s2);color:var(--text);
+  font-size:16px;font-weight:500;white-space:nowrap;
+  transition:background .12s,border-color .12s,color .12s;
+}
+.btn:hover:not(:disabled){background:var(--s3);border-color:var(--s4)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#3d1a18}
+.btn-accent:hover:not(:disabled){background:var(--accent-h);border-color:var(--accent-h);color:#3d1a18}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text2)}
+.btn-ghost:hover:not(:disabled){background:var(--s2);color:var(--text)}
+.btn-icon{width:32px;height:32px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);border:none;background:transparent;color:var(--text2);font-size:16px}
+.btn-icon:hover{background:var(--s2);color:var(--text)}
+.btn-danger{color:var(--red);border-color:transparent;background:transparent}
+.btn-danger:hover{background:var(--red-bg)}
+
+/* ── Toolbar ────────────────────────────────────────────────── */
+#toolbar{
+  height:var(--toolbar-h);
+  display:flex;align-items:center;gap:10px;
+  padding:0 14px;
+  background:var(--s1);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.logo{
+  font-size:16px;font-weight:700;letter-spacing:-.03em;
+  font-family:'Space Grotesk',sans-serif;
+  color:var(--text);white-space:nowrap;margin-right:4px;
+}
+.logo em{color:var(--accent);font-style:normal}
+#file-pill{
+  flex:1;min-width:0;display:flex;align-items:center;gap:8px;
+}
+#file-name{
+  font-size:16px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#file-duration{font-size:16px;color:var(--text3)}
+.toolbar-sep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+#toolbar-right{display:flex;align-items:center;gap:6px}
+#progress-inline{
+  display:flex;align-items:center;gap:8px;font-size:16px;color:var(--text2);
+}
+#progress-track{width:100px;height:3px;background:var(--s4);border-radius:2px;overflow:hidden}
+#progress-fill{height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .3s}
+
+/* ── Main workspace ─────────────────────────────────────────── */
+#workspace{
+  height:calc(100vh - var(--toolbar-h) - var(--footer-h));
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ── Main area (row: left-col + v-resizer + transcript) ──── */
+#main-area{
+  flex:1;display:flex;flex-direction:row;overflow:hidden;min-height:0;
+}
+
+/* ── Two-column layout ──────────────────────────────────────── */
+#left-col{
+  display:flex;flex-direction:column;
+  flex-shrink:0;overflow:hidden;
+  border-right:1px solid var(--border);
+  width:min(50%,520px);
+}
+
+/* Video panel */
+#video-panel{
+  flex:1;min-height:160px;border-right:none;
+  position:relative;background:#000;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+#dropzone{
+  width:100%;height:100%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;cursor:pointer;color:var(--text2);position:relative;
+  border:1.5px dashed var(--border);margin:12px;width:calc(100% - 24px);height:calc(100% - 24px);
+  border-radius:var(--r);transition:border-color .15s,background .15s;
+}
+#dropzone.dragover,#dropzone:hover{border-color:var(--accent);background:rgba(255,179,176,.05)}
+#dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+#dropzone svg{opacity:.25}
+#dropzone p{font-size:16px}#dropzone strong{color:var(--accent)}
+#dropzone.hidden{display:none}
+
+#player{display:none;width:100%;height:100%;object-fit:contain;background:#000}
+/* Audio-only mode: replace black rectangle with waveform-style banner.
+   flex:0 0 auto + aspect-ratio keeps it a compact video-frame-shaped preview
+   instead of ballooning to fill the column (which broke telop overlay scaling). */
+#video-panel.audio-only{
+  background:var(--bg2);display:flex;flex-direction:column;
+  flex:0 0 auto;aspect-ratio:16/9;min-height:180px;max-height:55vh;
+}
+#video-panel.audio-only #player{height:auto;max-height:56px;background:transparent}
+#audio-only-banner{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;color:var(--text2);font-size:16px;user-select:none;
+  width:100%;flex:1;
+}
+#audio-only-banner svg{opacity:.35}
+#video-panel.audio-only #audio-only-banner{display:flex;}
+#proxy-pending-banner{
+  display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;color:var(--text2);font-size:16px;user-select:none;
+  background:var(--bg2);z-index:3;text-align:center;padding:24px;
+}
+#proxy-pending-banner svg{opacity:.35}
+#proxy-pending-banner .sub{font-size:16px;color:var(--text3);max-width:340px;line-height:1.5}
+#video-panel.proxy-pending #proxy-pending-banner{display:flex;}
+/* Utility toggle cluster — top-right of the video preview. Always visible. */
+#video-utils{
+  position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:5;
+}
+/* Single global playback control — bottom of the video preview. Always
+   visible (no hover-to-reveal): the seekbar must be reachable at all times
+   during editing. This bar owns ALL playback state; no other play control
+   exists anywhere else in the app. */
+#video-transport{
+  position:absolute;bottom:0;left:0;right:0;
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:linear-gradient(transparent,rgba(0,0,0,.75));
+  z-index:5;
+}
+#btn-playpause{
+  width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);
+  color:#fff;font-size:16px;display:flex;align-items:center;justify-content:center;
+  border:none;cursor:pointer;flex-shrink:0;
+}
+#btn-playpause:hover{background:rgba(255,255,255,.25)}
+#btn-telop-overlay{
+  width:30px;height:30px;border-radius:4px;flex-shrink:0;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.5);font-size:16px;font-weight:700;cursor:pointer;
+  transition:background .15s,color .15s;
+}
+#btn-telop-overlay:hover{background:rgba(255,255,255,.2);color:rgba(255,255,255,.9)}
+#btn-telop-overlay.active{background:var(--accent,#CCA806);border-color:var(--accent,#CCA806);color:#000}
+#telop-overlay{position:absolute;inset:0;pointer-events:none;z-index:4;display:none}
+#seek-bar{flex:1;accent-color:var(--accent);height:3px;cursor:pointer}
+#vtime{font-size:16px;color:rgba(255,255,255,.85);white-space:nowrap;font-variant-numeric:tabular-nums}
+#btn-mute{
+  width:28px;height:28px;border-radius:4px;flex-shrink:0;background:transparent;
+  border:none;color:rgba(255,255,255,.8);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+#btn-mute:hover{color:#fff}
+#volume-slider{width:70px;accent-color:var(--accent);height:3px;cursor:pointer;flex-shrink:0}
+
+/* Bottom of left-col: quick stats panel */
+#stats-panel{
+  flex-shrink:0;display:flex;flex-direction:column;
+  background:var(--s1);overflow-y:auto;
+}
+#stat-hint{font-size:16px;color:var(--text3);line-height:1.6;border-top:1px solid var(--border);padding:12px 16px}
+#video-panel:fullscreen,#video-panel:-webkit-full-screen,#video-panel.is-fullscreen{
+  position:fixed !important;inset:0 !important;width:100vw !important;height:100vh !important;
+  flex:none;border:none;z-index:9999;background:#000;
+}
+#btn-fullscreen{
+  width:30px;height:30px;border-radius:4px;flex-shrink:0;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+  transition:background .15s,color .15s;
+}
+#btn-fullscreen:hover{background:rgba(255,255,255,.2);color:#fff}
+#btn-fullscreen.active{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.4);color:#fff}
+
+/* ── Waveform ───────────────────────────────────────────────── */
+#waveform-panel{
+  flex-shrink:0;height:180px;min-height:60px;display:flex;flex-direction:column;
+  border-top:none;position:relative;background:var(--s1);
+}
+#waveform-bar{
+  display:flex;align-items:center;gap:8px;padding:6px 14px 2px;
+  font-size:16px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;
+}
+#waveform-title{flex-shrink:0;white-space:nowrap}
+#waveform-hint{font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3);flex:1;font-size:16px}
+#waveform-wrap{
+  flex:1;position:relative;overflow:hidden;margin:0 14px 8px;
+  border-radius:var(--r-sm);
+}
+#wf-canvas{width:100%;height:100%;display:block;background:var(--s2);border-radius:var(--r-sm)}
+#removal-overlays{position:absolute;inset:0;pointer-events:none}
+.ro{
+  position:absolute;top:0;bottom:0;display:flex;align-items:stretch;
+  pointer-events:auto;
+}
+.ro.disabled .ro-fill{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.1)}
+.ro.disabled .ro-handle{background:rgba(255,255,255,.15)}
+.ro-handle{
+  width:5px;flex-shrink:0;border-radius:2px;
+  transition:background .1s;z-index:2;
+}
+.ro.type-silence .ro-handle{background:rgba(255,179,176,.85);cursor:ew-resize}
+.ro.type-filler  .ro-handle{background:rgba(207,192,232,.85);cursor:ew-resize}
+.ro.type-word    .ro-handle{background:rgba(255,205,42,.85);cursor:ew-resize}
+.ro.type-manual  .ro-handle{background:rgba(255,255,255,.40);cursor:ew-resize}
+.ro-fill{
+  flex:1;border-top:1px solid;border-bottom:1px solid;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.ro-dur{
+  font-size:16px;font-weight:600;letter-spacing:.02em;
+  pointer-events:none;user-select:none;white-space:nowrap;
+  mix-blend-mode:screen;opacity:.8;
+}
+.ro.type-silence .ro-dur{color:#FFB3B0}
+.ro.type-filler  .ro-dur{color:#CFC0E8}
+.ro.type-word    .ro-dur{color:#FFCD2A}
+.ro.type-manual  .ro-dur{color:rgba(255,255,255,0.40)}
+.ro.type-silence .ro-fill{background:rgba(255,179,176,.12);border-color:rgba(255,179,176,.35)}
+.ro.type-filler  .ro-fill{background:rgba(207,192,232,.1);border-color:rgba(207,192,232,.35)}
+.ro.type-word    .ro-fill{background:rgba(255,205,42,.1);border-color:rgba(255,205,42,.40)}
+.ro.type-manual  .ro-fill{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15)}
+/* Delete button — only shown on manual regions, revealed on hover */
+.ro-del{
+  position:absolute;top:3px;right:7px;
+  width:20px;height:20px;padding:0;
+  font-size:16px;line-height:20px;text-align:center;border-radius:50%;
+  background:rgba(255,255,255,.25);color:#fff;border:none;
+  cursor:pointer;opacity:0;transition:opacity .15s,background .12s;
+  pointer-events:auto;z-index:3;
+}
+.ro.type-manual:hover .ro-del{opacity:1}
+.ro-del:hover{background:rgba(255,179,176,.85)}
+/* Focus ring — marks the currently selected region in the waveform,
+   distinct from the orange/amber cut overlays */
+.ro-focus-ring{
+  position:absolute;top:0;bottom:0;
+  pointer-events:none;z-index:6;
+  border:1.5px solid rgba(255,255,255,.75);
+  border-radius:2px;
+  background:rgba(255,255,255,.06);
+  box-shadow:0 0 6px rgba(255,255,255,.2);
+}
+#wf-playhead{
+  position:absolute;top:0;bottom:0;width:1.5px;background:#fff;
+  pointer-events:none;z-index:3;opacity:.85;transform:translateX(0);
+}
+/* Drawing overlay for new regions */
+#draw-overlay{
+  position:absolute;inset:0;z-index:10;display:none;
+  background:rgba(255,179,176,.15);border:1px solid rgba(255,179,176,.5);
+  pointer-events:none;
+}
+
+/* ── Resizers ───────────────────────────────────────────────── */
+#h-resizer{
+  height:4px;flex-shrink:0;cursor:ns-resize;
+  background:transparent;transition:background .15s;
+}
+#h-resizer:hover,#h-resizer.dragging{background:var(--accent)}
+#v-resizer{
+  width:4px;flex-shrink:0;background:transparent;
+  cursor:col-resize;transition:background .15s;
+}
+#v-resizer:hover,#v-resizer.dragging{background:var(--accent)}
+
+/* ── Transcript panel ───────────────────────────────────────── */
+#transcript-panel{
+  flex:1;min-height:60px;display:flex;flex-direction:column;overflow:hidden;
+}
+#tx-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 14px;flex-shrink:0;border-bottom:1px solid var(--border);
+}
+#tx-bar-title{font-size:16px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;flex-shrink:0}
+#btn-llm-correct,#btn-tx-search,#btn-tx-options{
+  width:26px;height:26px;border-radius:4px;flex-shrink:0;
+  background:transparent;border:1px solid transparent;
+  color:var(--text3);font-size:16px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s,color .1s;
+}
+#btn-llm-correct:hover,#btn-tx-search:hover,#btn-tx-options:hover{background:var(--s2);color:var(--text)}
+#btn-llm-correct:disabled{opacity:.35;cursor:default}
+#btn-llm-correct:disabled:hover{background:transparent;color:var(--text3)}
+#btn-tx-search.active{color:var(--accent);background:rgba(255,179,176,.08)}
+#tx-search-bar{
+  display:none;flex-direction:column;gap:6px;
+  padding:8px 14px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--s1);
+}
+#tx-search-bar.open{display:flex}
+.tx-search-row{display:flex;align-items:center;gap:6px}
+.tx-search-icon{color:var(--text3);flex-shrink:0;display:flex}
+.tx-search-replace-label{width:14px;height:14px;justify-content:center;align-items:center;font-size:16px;line-height:1}
+#tx-search-find,#tx-search-replace{
+  flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);border-radius:4px;
+  color:var(--text);font-size:16px;padding:4px 8px;font-family:inherit;
+}
+#tx-search-find:focus,#tx-search-replace:focus{outline:none;border-color:var(--accent)}
+#tx-search-count{font-size:16px;color:var(--text3);white-space:nowrap;min-width:40px;text-align:center;flex-shrink:0}
+#tx-search-replace-one,#tx-search-replace-all{
+  font-size:16px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0;
+}
+#tx-search-replace-one:hover,#tx-search-replace-all:hover{background:var(--s2);color:var(--text)}
+#tx-search-replace-one:disabled,#tx-search-replace-all:disabled{opacity:.4;cursor:default}
+#tx-search-replace-one:disabled:hover,#tx-search-replace-all:disabled:hover{background:transparent;color:var(--text2)}
+.tx-seg-inline.tx-search-match{background:rgba(255,179,176,.12);border-radius:3px}
+.tx-seg-inline.tx-search-current{background:rgba(255,179,176,.28);outline:1px solid var(--accent);outline-offset:1px;border-radius:3px}
+#tx-scroll{flex:1;overflow-y:auto;padding:16px 20px}
+
+/* ── Transcript paragraph layout ──────────────────────────── */
+/* Left padding = timestamp offset (10px) + widest realistic timestamp at 16px
+   (measured ~62px for "34:53.4"-style values, real content runs well past
+   9:59) + 24px gap to the transcript text. */
+.tx-paragraph{position:relative;margin-bottom:1.4em;padding:0 10px 0 100px}
+.tx-para-time{
+  position:absolute;left:10px;top:2px;
+  font-size:16px;font-weight:600;color:var(--text3);
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;
+  white-space:nowrap;line-height:1.9;
+}
+.tx-para-content{font-size:16px;line-height:1.9;color:var(--text)}
+
+/* Inline sentence span — click to seek */
+.tx-seg-inline{
+  display:inline;cursor:pointer;border-radius:2px;padding:0 1px;
+  transition:background .1s,text-decoration-color .1s;
+}
+.tx-seg-inline:hover{background:rgba(255,255,255,.06)}
+.tx-seg-inline.tx-seg-active{
+  text-decoration:underline;text-decoration-color:rgba(255,255,255,.22);
+  text-underline-offset:3px;
+}
+.tx-seg-inline.tx-seg-focused{background:rgba(255,179,176,.10)}
+.tx-seg-inline.tx-seg-focused.tx-seg-active{
+  text-decoration:underline;text-decoration-color:var(--accent);
+  text-underline-offset:3px;
+}
+
+/* Short inline silence marker:  | 0.8s | */
+.tx-sil-inline{
+  display:inline;margin:0 3px;padding:1px 5px;border-radius:3px;
+  font-size:16px;font-weight:500;cursor:pointer;user-select:none;
+  transition:background .1s,opacity .1s;
+  white-space:nowrap;vertical-align:baseline;
+}
+.tx-sil-inline.on{background:var(--red-bg);color:var(--red);border:1px solid rgba(255,179,176,.3)}
+.tx-sil-inline.off{background:var(--s3);color:var(--text3);border:1px solid var(--border);opacity:.55}
+.tx-sil-inline:hover{opacity:1}
+.tx-sil-inline.tx-item-focused{outline:2px solid var(--accent);outline-offset:1px}
+
+/* Long silence separator between paragraphs */
+.tx-sil-sep{
+  display:block;text-align:center;margin:4px 0 10px;
+  font-size:16px;font-weight:500;letter-spacing:.05em;
+  cursor:pointer;user-select:none;transition:opacity .1s;
+}
+.tx-sil-sep.on{color:var(--red);opacity:.85}
+.tx-sil-sep.off{color:var(--text3);opacity:.4}
+.tx-sil-sep:hover{opacity:1}
+.tx-sil-sep.tx-item-focused{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* Filler word — toggleable */
+.tx-filler{
+  background:var(--amber-bg);color:var(--amber);border-radius:3px;
+  padding:0 3px;cursor:pointer;white-space:nowrap;
+  text-decoration-line:underline;text-decoration-style:dotted;text-decoration-color:var(--amber);
+  transition:background .1s;
+}
+.tx-filler.off{background:transparent;color:var(--text);text-decoration:none;opacity:.5}
+.tx-filler:hover{background:rgba(207,192,232,.22)}
+.tx-filler.tx-item-focused{outline:2px solid var(--amber);outline-offset:1px}
+/* Deleted filler word, shown via "Show deleted filler words" — strikethrough
+   over the actual word text so it's legible exactly which word was cut.
+   The "〜" placeholder glyph is a wavy dash that sits at the same vertical
+   band a normal-weight strikethrough occupies, so a thin line visually
+   disappears into it — thickness+opacity are bumped up so the cut is
+   unmistakable even through that glyph, not just through the duration text. */
+.tx-filler.tx-filler-cut{
+  background:transparent;text-decoration-line:line-through;text-decoration-style:solid;
+  text-decoration-color:var(--amber);text-decoration-thickness:2px;opacity:.55;
+}
+
+/* ── Word-level transcript spans ─────────────────────────────── */
+.tx-word {
+  display: inline;
+  cursor: pointer;
+  border-radius: 2px;
+  padding: 1px 0;
+  transition: background .12s;
+}
+.tx-word:hover {
+  background: rgba(204, 168, 6, .18);
+}
+.tx-word-active {
+  background: rgba(204, 168, 6, .32);
+  border-radius: 2px;
+}
+.tx-word-uncertain {
+  text-decoration: underline dotted rgba(255, 255, 255, .38);
+  text-underline-offset: 3px;
+}
+/* Phase 2 (delete-to-cut) — declared now so Phase 2 only needs to toggle the class */
+.tx-word-cut {
+  text-decoration: line-through;
+  opacity: .45;
+}
+/* Custom drag-selection highlight (replaces native ::selection in WKWebView) */
+.tx-word-selected {
+  background: rgba(204, 168, 6, .35);
+  border-radius: 2px;
+}
+/* Currently-playing word that is also selected — brighter combined state */
+.tx-word-active.tx-word-selected {
+  background: rgba(204, 168, 6, .58);
+}
+/* Fallback native selection (desktop browsers) */
+.tx-word::selection, .tx-word *::selection {
+  background: rgba(204, 168, 6, .40);
+}
+
+/* No-transcript empty state */
+#tx-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;color:var(--text3);padding:32px;text-align:center;
+}
+#tx-empty svg{opacity:.15}
+.tx-empty-title{font-size:16px;color:var(--text2)}
+.tx-empty-sub{font-size:16px;color:var(--text3);max-width:280px;line-height:1.6}
+
+/* ── Zoom controls ──────────────────────────────────────────── */
+#zoom-controls{display:flex;align-items:center;gap:2px;margin-left:auto}
+#zoom-label{font-size:16px;color:var(--text3);min-width:28px;text-align:center;font-variant-numeric:tabular-nums;font-weight:400;text-transform:none;letter-spacing:0}
+#btn-follow-playhead{border-left:1px solid var(--border);margin-left:4px;padding-left:6px;border-radius:0;color:var(--text3)}
+#btn-follow-playhead.active{color:var(--accent)}
+#waveform-wrap{cursor:default}
+#waveform-wrap.zoomed{cursor:grab}
+#waveform-wrap.zoomed.panning{cursor:grabbing}
+
+/* ── Region card list ───────────────────────────────────────── */
+.region-list-hdr{
+  padding:0 0 6px;font-size:16px;color:var(--text3);
+}
+/* Region card — compact list row */
+.region-card{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 8px;margin:0 -8px;border-radius:var(--r-sm);
+  cursor:pointer;
+  transition:background .1s;
+}
+.region-card:hover{background:var(--s2)}
+.region-card.rc-focused{
+  background:rgba(255,179,176,.07);
+  box-shadow:inset 3px 0 0 var(--accent);
+  outline:none;
+}
+/* CUT / KEEP badge */
+.rc-badge{
+  flex-shrink:0;width:56px;height:26px;border-radius:3px;
+  font-size:16px;font-weight:700;letter-spacing:.07em;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;
+  transition:background .1s,color .1s,border-color .1s;
+}
+.rc-on  .rc-badge{background:rgba(255,179,176,.15);color:var(--red);  border:1px solid rgba(255,179,176,.3)}
+.rc-off .rc-badge{background:var(--s3);          color:var(--text3);border:1px solid var(--border)}
+.region-card:hover .rc-off.rc-badge{background:var(--s4)}
+/* Time */
+.rc-time-col{
+  flex:0 0 auto;font-size:16px;font-variant-numeric:tabular-nums;
+  color:var(--text);white-space:nowrap;
+}
+.rc-off .rc-time-col{color:var(--text3)}
+/* Type label */
+.rc-type{
+  flex:1;font-size:16px;color:var(--text3);
+}
+/* Duration */
+.rc-dur{
+  flex-shrink:0;font-size:16px;font-variant-numeric:tabular-nums;
+  color:var(--text3);white-space:nowrap;min-width:38px;text-align:right;
+}
+
+/* ── Footer / action bar ────────────────────────────────────── */
+#footer{
+  height:var(--footer-h);flex-shrink:0;
+  display:flex;align-items:center;gap:8px;
+  padding:0 14px;background:var(--s1);border-top:1px solid var(--border);
+}
+#footer-stats{
+  flex:1;display:flex;gap:16px;font-size:16px;color:var(--text3);
+}
+.fstat strong{color:var(--text);font-variant-numeric:tabular-nums}
+
+/* ── Settings Drawer ────────────────────────────────────────── */
+#drawer-back{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(2px);
+  z-index:90;display:none;opacity:0;transition:opacity .2s;
+}
+#drawer-back.open{display:block;opacity:1}
+#drawer{
+  position:fixed;top:0;right:-340px;bottom:0;width:320px;
+  background:var(--s1);border-left:1px solid var(--border);
+  z-index:91;display:flex;flex-direction:column;
+  transition:right .2s cubic-bezier(.4,0,.2,1);
+  box-shadow:-8px 0 32px rgba(0,0,0,.4);
+}
+#drawer.open{right:0}
+#drawer-head{
+  display:flex;align-items:center;padding:14px 16px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+#drawer-head h2{font-size:16px;font-weight:600;flex:1}
+#drawer-scroll{flex:1;overflow-y:auto;padding:16px}
+#drawer-footer{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;justify-content:flex-end}
+.drawer-section{margin-bottom:24px}
+.drawer-section h3{
+  font-size:16px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--text3);margin-bottom:12px;
+}
+.field{margin-bottom:12px}
+.field label{
+  display:block;font-size:16px;color:var(--text2);margin-bottom:5px;font-weight:500;
+}
+.field-row{display:flex;align-items:center;gap:8px}
+.field input[type=range]{flex:1;accent-color:var(--accent);height:3px;cursor:pointer}
+.range-val{font-size:16px;color:var(--text2);min-width:50px;text-align:right;font-variant-numeric:tabular-nums}
+.field select,.field input[type=number],.field input[type=text]{
+  width:100%;padding:6px 9px;background:var(--s2);
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  color:var(--text);font:inherit;font-size:16px;
+}
+.field select:focus,.field input:focus{outline:none;border-color:var(--accent)}
+.field input[type=color]{
+  width:38px;height:26px;padding:2px;background:var(--s2);
+  border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;
+}
+.check-row{display:flex;align-items:center;gap:7px;font-size:16px;cursor:pointer}
+.check-row input[type=checkbox]{accent-color:var(--accent);cursor:pointer}
+.whisper-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:16px;padding:2px 7px;border-radius:10px;
+  font-weight:500;margin-left:6px;
+}
+.whisper-badge.ok{background:rgba(158,208,207,.12);color:var(--green)}
+.whisper-badge.warn{background:rgba(207,192,232,.12);color:var(--amber)}
+
+/* ── Recent sessions dropdown ───────────────────────────────── */
+#recent-dropdown{
+  position:fixed;top:52px;right:auto;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:var(--r);min-width:320px;max-width:460px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:200;
+  display:none;flex-direction:column;overflow:hidden;
+}
+#recent-dropdown.open{display:flex}
+#recent-header{
+  padding:10px 14px 8px;font-size:16px;font-weight:600;
+  color:var(--text3);letter-spacing:.04em;text-transform:uppercase;
+  border-bottom:1px solid var(--border2);flex-shrink:0;
+}
+#recent-list{max-height:360px;overflow-y:auto}
+
+/* ── Transcript panel right-click context menu ─────────────────── */
+#tx-context-menu{
+  position:fixed;background:var(--s2);border:1px solid var(--border);
+  border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:300;
+  display:none;flex-direction:column;padding:4px;min-width:240px;
+}
+#tx-context-menu.open{display:flex}
+.tx-ctx-item{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:8px 10px;background:transparent;border:none;border-radius:4px;
+  color:var(--text);font-size:16px;text-align:left;cursor:pointer;
+  transition:background .1s;
+}
+.tx-ctx-item:hover{background:var(--s3)}
+.tx-ctx-check{width:16px;flex-shrink:0;color:var(--accent);visibility:hidden}
+.tx-ctx-item.checked .tx-ctx-check{visibility:visible}
+.recent-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border2);
+  transition:background .1s;
+}
+.recent-item:last-child{border-bottom:none}
+.recent-item:hover{background:var(--s3)}
+.recent-item.missing{opacity:.45;cursor:not-allowed}
+.recent-icon{font-size:16px;flex-shrink:0}
+.recent-info{flex:1;min-width:0}
+.recent-name{
+  font-size:16px;font-weight:500;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.recent-meta{font-size:16px;color:var(--text3);margin-top:2px}
+#recent-empty{
+  padding:24px 14px;text-align:center;
+  font-size:16px;color:var(--text3);
+}
+.recent-remove-btn{
+  flex-shrink:0;background:none;border:none;cursor:pointer;
+  font-size:16px;color:var(--text3);padding:2px 4px;border-radius:3px;
+  opacity:0;transition:opacity .15s;
+}
+.recent-item:hover .recent-remove-btn{opacity:1}
+.recent-remove-btn:hover{color:var(--text);background:var(--s4)}
+
+/* ── Export Dialog ──────────────────────────────────────────── */
+#export-dialog{
+  position:fixed;width:360px;
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,.55);
+  z-index:150;display:none;flex-direction:column;overflow:hidden;
+}
+#export-dialog.open{display:flex}
+#export-tabs{
+  display:flex;padding:10px 12px 0;gap:2px;
+  border-bottom:1px solid var(--border);
+}
+.export-tab{
+  flex:1;padding:6px 4px;font-size:16px;font-weight:500;
+  color:var(--text3);background:transparent;border:none;
+  border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;
+  text-align:center;transition:color .12s,border-color .12s;
+}
+.export-tab:hover:not(:disabled){color:var(--text)}
+.export-tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.export-tab:disabled{opacity:.4;cursor:not-allowed}
+#export-body{padding:14px}
+.export-panel{display:none}
+.export-panel.active{display:block}
+.export-desc{font-size:16px;color:var(--text2);line-height:1.6}
+.ed-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:0}
+.ed-field{display:flex;flex-direction:column;gap:4px}
+.ed-field label{font-size:16px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.ed-field select,.ed-field input[type=number]{
+  padding:5px 6px;background:var(--s3);border:1px solid var(--border);
+  border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:16px;width:100%;
+  box-sizing:border-box;
+}
+.ed-field select:focus,.ed-field input[type=number]:focus{outline:none;border-color:var(--accent)}
+.ed-field input[type=color]{
+  width:38px;height:28px;padding:2px;background:var(--s3);
+  border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;
+}
+.ed-format-toggle{
+  display:flex;background:var(--s3);border:1px solid var(--border);
+  border-radius:var(--r-sm);overflow:hidden;margin-top:8px;
+}
+.ed-format-btn,.ed-timing-btn{
+  flex:1;padding:7px;font-size:16px;font-weight:500;color:var(--text3);
+  background:transparent;border:none;cursor:pointer;text-align:center;
+  transition:background .1s,color .1s;
+}
+.ed-format-btn.active,.ed-timing-btn.active{background:var(--s4);color:var(--text)}
+#export-padding-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 14px;border-top:1px solid var(--border2);
+}
+#export-padding-row label{font-size:16px;color:var(--text2);white-space:nowrap;min-width:52px}
+#export-padding-row input[type=range]{flex:1;accent-color:var(--accent);height:3px;cursor:pointer}
+#export-padding-val{font-size:16px;color:var(--text2);min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+#export-footer{
+  display:flex;justify-content:flex-end;gap:8px;
+  padding:10px 14px;border-top:1px solid var(--border);background:var(--s1);
+}
+
+/* ── Toast ──────────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(12px);
+  background:var(--s3);border:1px solid var(--border);
+  padding:7px 18px;border-radius:0px;font-size:16px;
+  pointer-events:none;z-index:99;opacity:0;transition:opacity .2s,transform .2s;
+  /* No nowrap: the preflight degraded-mode summary (checkCaps() in
+     analysis.js) can be longer than any previous toast message — wrap it
+     instead of letting it overflow the window. max-width leaves existing
+     short single-line toasts visually unchanged. */
+  max-width:min(480px,86vw);text-align:center;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Silence preview badge ──────────────────────────────────── */
+#sil-preview-badge{
+  font-size:16px;font-weight:500;color:var(--text2);
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:9px;padding:1px 6px;
+  vertical-align:middle;margin-left:6px;
+  display:none;
+}
+
+/* ── Waveform hover time cursor ─────────────────────────────── */
+#wf-time-tip{
+  position:absolute;top:4px;
+  background:rgba(0,0,0,.72);color:var(--text2);
+  font-size:16px;padding:2px 6px;border-radius:3px;
+  pointer-events:none;white-space:nowrap;z-index:8;
+  display:none;
+}
+
+/* ── Keyboard shortcuts overlay ────────────────────────────── */
+#shortcuts-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);
+  display:none;align-items:center;justify-content:center;z-index:200;
+}
+#shortcuts-overlay.open{display:flex}
+#shortcuts-panel{
+  background:var(--s2);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px 24px;min-width:280px;
+  max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#shortcuts-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:14px}
+.sc-row{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 0;border-bottom:1px solid var(--border2);
+  font-size:16px;color:var(--text2);
+}
+.sc-row:last-of-type{border-bottom:none}
+.sc-row kbd{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--s3);border:1px solid var(--border);
+  border-radius:3px;padding:1px 5px;font-size:16px;
+  font-family:inherit;color:var(--text);min-width:22px;white-space:nowrap;
+}
+.sc-desc{flex:1;text-align:right}
+
+/* Local-LLM correction review modal */
+#llm-review-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);
+  display:none;align-items:center;justify-content:center;z-index:210;
+}
+#llm-review-overlay.open{display:flex}
+#llm-review-panel{
+  background:var(--s2);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px 24px;min-width:460px;max-width:640px;max-height:80vh;
+  display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#llm-review-title{font-size:16px;font-weight:600;color:var(--text)}
+#llm-review-sub{font-size:16px;color:var(--text3);margin:6px 0 14px}
+#llm-review-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.llm-row{
+  display:flex;align-items:center;gap:10px;padding:7px 6px;border-radius:4px;
+  font-size:16px;color:var(--text);
+}
+.llm-row:hover{background:var(--s3)}
+.llm-row-from{color:var(--text2);text-decoration:line-through;text-decoration-color:var(--text3)}
+.llm-row-to{color:var(--accent);font-weight:600}
+.llm-row-flip{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text2);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;flex-shrink:0;
+}
+.llm-row-flip:hover{background:var(--s2);color:var(--text)}
+.llm-row-count{color:var(--text3);font-size:16px;margin-left:auto;white-space:nowrap}
+.llm-row-always{display:flex;align-items:center;gap:3px;color:var(--text3);font-size:16px;white-space:nowrap}
+#llm-review-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+#llm-review-cancel,#llm-review-apply{
+  font-size:16px;padding:6px 16px;border-radius:5px;cursor:pointer;border:1px solid var(--border);
+}
+#llm-review-cancel{background:transparent;color:var(--text2)}
+#llm-review-cancel:hover{background:var(--s3);color:var(--text)}
+#llm-review-apply{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+#llm-review-apply:hover{filter:brightness(1.08)}
+/* Revert bar */
+#llm-revert-bar{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  display:none;align-items:center;gap:14px;z-index:120;
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 16px;box-shadow:0 6px 24px rgba(0,0,0,.45);
+  font-size:16px;color:var(--text2);
+}
+#llm-revert-bar.open{display:flex}
+#llm-revert-btn{
+  background:transparent;border:1px solid var(--accent);border-radius:5px;
+  color:var(--accent);font-size:16px;padding:4px 12px;cursor:pointer;
+}
+#llm-revert-btn:hover{background:rgba(255,179,176,.1)}
+
+/* Dependency preflight blocker — ffmpeg/ffprobe missing (app can't run).
+   Highest z-index of any overlay: this must always win, shown at launch
+   before the user can do anything else. See checkCaps() in analysis.js. */
+#dep-blocker-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:none;align-items:center;justify-content:center;z-index:500;
+}
+#dep-blocker-overlay.open{display:flex}
+#dep-blocker-panel{
+  background:var(--s2);border:1px solid var(--red);border-radius:var(--r);
+  padding:24px 28px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.6);
+}
+#dep-blocker-title{
+  font-size:18px;font-weight:600;color:var(--red);margin-bottom:10px;
+}
+#dep-blocker-msg{font-size:16px;color:var(--text2);line-height:1.6}
+#dep-blocker-actions{display:flex;justify-content:flex-end;margin-top:18px}
+#dep-blocker-dismiss{
+  font-size:16px;padding:6px 16px;border-radius:5px;cursor:pointer;
+  background:transparent;border:1px solid var(--border);color:var(--text2);
+}
+#dep-blocker-dismiss:hover{background:var(--s3);color:var(--text)}
+
+/* Telop selection ring */
+.telop-selected {
+  outline: 2px dashed rgba(204,168,6,.85);
+  outline-offset: 8px;
+  cursor: pointer;
+}
+
+/* Telop quick-edit control panel (shown in place of stats when telop is selected) */
+#telop-ctrl {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  overflow-y: auto;
+}
+#telop-ctrl .tc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#telop-ctrl .tc-label {
+  font-size: 16px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  width: 132px;
+  flex-shrink: 0;
+}
+#telop-ctrl select,
+#telop-ctrl input[type=number] {
+  flex: 1;
+  min-width: 0;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text1);
+  border-radius: var(--r);
+  padding: 3px 6px;
+  font-size: 16px;
+}
+#telop-ctrl input[type=color] {
+  width: 28px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#telop-ctrl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+#telop-ctrl-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+#tc-close {
+  font-size: 16px;
+  color: var(--text3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+#tc-close:hover { color: var(--text1); }
+</style>
+</head>
+<body>
+
+<!-- ── Settings Drawer ───────────────────────────────── -->
+<div id="drawer-back"></div>
+<div id="drawer">
+  <div id="drawer-head">
+    <h2>Settings</h2>
+    <button class="btn-icon" id="btn-close-drawer" title="Close (Esc)">✕</button>
+  </div>
+  <div id="drawer-scroll">
+
+    <div class="drawer-section">
+      <h3>Silence Detection <span id="sil-preview-badge"></span></h3>
+      <div class="field">
+        <label>Threshold (dB)</label>
+        <div class="field-row">
+          <input type="range" id="s-threshold" min="-70" max="-10" step="1" value="-40">
+          <span class="range-val" id="s-threshold-val">−40 dB</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Minimum silence duration</label>
+        <div class="field-row">
+          <input type="range" id="s-min-dur" min="0.1" max="3" step="0.1" value="1">
+          <span class="range-val" id="s-min-dur-val">1 s</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Hold time (merge nearby silences)</label>
+        <div class="field-row">
+          <input type="range" id="s-hangover" min="0" max="1000" step="50" value="300">
+          <span class="range-val" id="s-hangover-val">300 ms</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Padding (keep context around cuts)</label>
+        <div class="field-row">
+          <input type="range" id="s-padding" min="0" max="500" step="10" value="200">
+          <span class="range-val" id="s-padding-val">200 ms</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Filler Word Detection
+        <span class="whisper-badge warn" id="whisper-badge">⚠ not installed</span>
+      </h3>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="f-enable" checked> Enable (requires Whisper)</label>
+      </div>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="f-japanese" checked> Japanese — まあ、えー、あの…</label>
+      </div>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="f-english" checked> English — um, uh, like…</label>
+      </div>
+      <div class="field">
+        <label>Custom filler words</label>
+        <input type="text" id="f-custom" placeholder="word1, word2, …">
+      </div>
+      <div class="field">
+        <label>Whisper model</label>
+        <select id="f-model">
+          <option value="turbo" selected>large-v3-turbo ★ — best balance (recommended)</option>
+          <option value="large-v3">large-v3 — highest accuracy, ~2× slower</option>
+          <option value="large-v2">large-v2</option>
+          <option value="medium">medium — faster, lower accuracy</option>
+          <option value="small">small</option>
+          <option value="base">base</option>
+          <option value="tiny">tiny — fastest, lowest accuracy</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>AI Transcript Correction</h3>
+      <div class="field">
+        <label>Local model (Ollama)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="llm-model" style="flex:1"><option>Loading…</option></select>
+          <button id="llm-refresh-models" title="Refresh model list" style="flex-shrink:0;padding:4px 8px;font-size:16px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--text2);cursor:pointer">↻</button>
+        </div>
+        <div id="llm-model-hint" style="font-size:16px;color:var(--text3);margin-top:4px"></div>
+      </div>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="llm-auto"> Run brand-name correction automatically after analysis</label>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Telop Export</h3>
+      <div class="field"><label>Frame Rate</label>
+        <select id="t-fps">
+          <option value="24" selected>24 fps</option>
+          <option value="23.976">23.976 fps</option>
+          <option value="25">25 fps</option>
+          <option value="29.97">29.97 fps</option>
+          <option value="30">30 fps</option>
+          <option value="59.94">59.94 fps</option>
+          <option value="60">60 fps</option>
+        </select>
+      </div>
+      <div class="field"><label>Resolution</label>
+        <select id="t-res">
+          <option value="3840x2160" selected>3840 × 2160 — 4K UHD</option>
+          <option value="1920x1080">1920 × 1080 — FHD</option>
+          <option value="1080x1920">1080 × 1920 — Vertical</option>
+          <option value="1080x1350">1080 × 1350 — 4:5</option>
+        </select>
+      </div>
+      <div class="field"><label>Font</label>
+        <select id="t-font">
+          <option value="Momochidori Heavy" selected>Momochidori Heavy</option>
+          <option value="Toppan Bunkyu Gothic">Toppan Bunkyu Gothic</option>
+          <option value="Shippori Mincho B1">Shippori Mincho B1</option>
+          <option value="Hiragino Sans">Hiragino Sans</option>
+          <option value="Hiragino Kaku Gothic Pro">Hiragino Kaku Gothic Pro</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="field" style="flex:1"><label>Font size</label>
+          <input type="number" id="t-font-size" value="92" min="10" max="500">
+        </div>
+        <div class="field"><label>Color</label>
+          <input type="color" id="t-font-color" value="#F3B500">
+        </div>
+        <div class="field" style="flex:1"><label>Y offset (px)</label>
+          <input type="number" id="t-pos-y" value="-420" min="-1080" max="1080">
+        </div>
+        <div class="field" style="flex:1"><label>Line spacing</label>
+          <input type="number" id="t-line-spacing" value="-65" min="-200" max="200">
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Storage &amp; Cache</h3>
+      <div class="field">
+        <label style="color:var(--text3);font-size:16px" id="cache-size-label">Loading cache info…</label>
+      </div>
+      <div class="field">
+        <label class="check-row"><input type="checkbox" id="cache-clear-sessions"> Also clear session history (analysis results)</label>
+      </div>
+      <button class="btn" id="btn-clear-cache" style="margin-top:4px">🗑 Clear Cache</button>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Developer</h3>
+      <div class="field">
+        <label style="color:var(--text3);font-size:16px">Log file</label>
+        <code id="debug-log-path" style="display:block;font-size:16px;color:var(--text3);word-break:break-all;line-height:1.5;margin-top:3px;background:var(--s2);border-radius:var(--r-sm);padding:4px 7px;border:1px solid var(--border2)">—</code>
+      </div>
+      <button class="btn" id="btn-copy-logs" style="margin-top:4px">Copy logs</button>
+      <p style="font-size:16px;color:var(--text3);margin-top:8px;line-height:1.5">Last 500 lines copied to clipboard.<br>Run an analysis first to generate entries.</p>
+    </div>
+
+  </div><!-- /drawer-scroll -->
+  <div id="drawer-footer">
+    <button class="btn" id="btn-settings-revert">Revert</button>
+    <button class="btn btn-accent" id="btn-settings-apply">Apply</button>
+  </div>
+</div><!-- /drawer -->
+
+<!-- ── App shell ─────────────────────────────────────── -->
+<div id="app" style="display:flex;flex-direction:column;height:100vh;overflow:hidden">
+
+  <!-- Toolbar -->
+  <header id="toolbar">
+    <span class="logo">Vid<em>Tighten</em></span>
+    <div class="toolbar-sep"></div>
+    <div id="file-pill">
+      <span id="file-name"></span>
+      <span id="file-duration"></span>
+    </div>
+    <div class="toolbar-sep"></div>
+    <div id="toolbar-right">
+      <div id="progress-inline" style="display:none">
+        <div id="progress-track"><div id="progress-fill"></div></div>
+        <span id="progress-label">—</span>
+        <button class="btn-icon" id="btn-cancel-analysis" title="Cancel analysis">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="11" y2="11"/><line x1="11" y1="1" x2="1" y2="11"/></svg>
+        </button>
+      </div>
+      <button class="btn btn-ghost" id="btn-open">Open File</button>
+      <button class="btn btn-ghost" id="btn-recent" title="Recent sessions">Recent ▾</button>
+      <button class="btn" id="btn-analyze" disabled title="Re-run full analysis (Whisper + silence detection)">↺ Re-analyze</button>
+      <div class="toolbar-sep"></div>
+      <button class="btn btn-accent" id="btn-export" disabled title="Export (⌘E)">Export ▾</button>
+      <div class="toolbar-sep"></div>
+      <button class="btn-icon" id="btn-settings" title="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div id="workspace">
+
+    <!-- Main area: left-col + v-resizer + transcript (fills workspace minus waveform) -->
+    <div id="main-area">
+
+      <!-- Left column: video + stats -->
+      <div id="left-col">
+
+        <!-- Video panel -->
+        <div id="video-panel">
+          <div id="dropzone">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M10 8l6 4-6 4V8z"/></svg>
+            <p><strong>Drop a file here</strong> or <strong>Open File</strong> above</p>
+            <p style="font-size:16px;color:var(--text3)">Video or audio · MP4, MOV, M4V, MP3, AAC…</p>
+            <input type="file" id="file-input" accept="video/*,audio/*,.mov,.mxf,.m4v,.flac">
+          </div>
+          <div id="audio-only-banner">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            <span>Audio file · waveform below</span>
+          </div>
+          <!-- Shown while a high-res video's preview proxy is still being generated.
+               The source video's src is deliberately left unset during this state —
+               some codecs/profiles (e.g. 10-bit 4:2:2 HEVC) have no decode path in
+               WKWebView at all, not just a slow one, so attempting to play the
+               original as an "interim" measure can black-screen with a hard error
+               instead of degrading gracefully. -->
+          <div id="proxy-pending-banner">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+            <span>Generating preview…</span>
+            <span class="sub">This file's format needs a one-time conversion for smooth
+              playback. Large files can take several minutes —
+              <span id="proxy-pending-elapsed"></span>analysis and editing work normally
+              in the meantime.</span>
+          </div>
+          <video id="player" playsinline></video>
+          <div id="telop-overlay"></div>
+          <!-- Utility toggles (telop preview, fullscreen) — not playback state,
+               kept separate from the transport bar below. -->
+          <div id="video-utils">
+            <button id="btn-telop-overlay" style="display:none" title="Toggle telop preview overlay (T)">T</button>
+            <button id="btn-fullscreen" title="Toggle fullscreen (F)">⛶</button>
+          </div>
+          <!-- ONE global playback control: play/pause, seek, time, volume.
+               Always visible (not hover-only) — this is the single source of
+               playback control; no other play buttons exist anywhere else. -->
+          <div id="video-transport">
+            <button id="btn-playpause" title="Play/Pause (Space)">▶</button>
+            <input type="range" id="seek-bar" min="0" max="1000" step="1" value="0">
+            <span id="vtime">0:00 / 0:00</span>
+            <button id="btn-mute" title="Mute (M)">🔊</button>
+            <input type="range" id="volume-slider" min="0" max="100" step="1" value="100" title="Volume">
+          </div>
+        </div>
+
+        <!-- Stats panel: natural height, fixed below video -->
+        <div id="stats-panel">
+          <!-- Onboarding / warning hint (hidden when telop selected). Cut-count stats live in the bottom status bar. -->
+          <div id="stats-content" style="display:flex;flex-direction:column;">
+            <div id="stat-hint">Load a file — analysis<br>starts <strong>automatically</strong>.</div>
+          </div>
+
+          <!-- Telop control panel (shown when telop selected) -->
+          <div id="telop-ctrl">
+            <div id="telop-ctrl-header">
+              <span id="telop-ctrl-title">Telop</span>
+              <button id="tc-close" title="Deselect (Esc)">✕</button>
+            </div>
+
+            <div class="tc-row">
+              <span class="tc-label">Font</span>
+              <select id="tc-font">
+                <option value="Momochidori Heavy">Momochidori Heavy</option>
+                <option value="Toppan Bunkyu Gothic">Toppan Bunkyu Gothic</option>
+                <option value="Shippori Mincho B1">Shippori Mincho B1</option>
+                <option value="Hiragino Sans">Hiragino Sans</option>
+                <option value="Hiragino Kaku Gothic Pro">Hira Kaku Gothic</option>
+              </select>
+            </div>
+
+            <div class="tc-row">
+              <span class="tc-label">Size</span>
+              <input type="number" id="tc-font-size" min="8" max="300" step="1">
+              <input type="color" id="tc-font-color">
+            </div>
+
+            <div class="tc-row">
+              <span class="tc-label">Position Y</span>
+              <input type="number" id="tc-pos-y" step="10">
+            </div>
+
+            <div class="tc-row">
+              <span class="tc-label">Line spacing</span>
+              <input type="number" id="tc-line-spacing" step="1">
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /left-col -->
+
+      <!-- V-resizer: drag to resize left-col width -->
+      <div id="v-resizer"></div>
+
+    <!-- Transcript: full workspace height on the right -->
+    <div id="transcript-panel">
+      <div id="tx-bar">
+        <span id="tx-bar-title">Transcript</span>
+        <div style="flex:1"></div>
+        <button id="btn-llm-correct" title="Fix brand-name mishearings with a local LLM" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg></button>
+        <button id="btn-tx-search" title="Find &amp; replace in transcript"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        <button id="btn-tx-options" title="Transcript display options (or right-click the transcript)">&#8942;</button>
+      </div>
+      <div id="tx-search-bar">
+        <div class="tx-search-row">
+          <svg class="tx-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="tx-search-find" placeholder="Find in transcript" autocomplete="off">
+          <span id="tx-search-count">0/0</span>
+          <button class="btn-icon" id="tx-search-prev" title="Previous match (Shift+Enter)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+          <button class="btn-icon" id="tx-search-next" title="Next match (Enter)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <button class="btn-icon" id="tx-search-close" title="Close (Esc)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg></button>
+        </div>
+        <div class="tx-search-row">
+          <span class="tx-search-icon tx-search-replace-label">↳</span>
+          <input type="text" id="tx-search-replace" placeholder="Replace with" autocomplete="off">
+          <button id="tx-search-replace-one">Replace</button>
+          <button id="tx-search-replace-all">Replace All</button>
+        </div>
+      </div>
+      <div id="tx-scroll">
+        <div id="tx-content"></div>
+        <div id="tx-empty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+          <p class="tx-empty-title">No transcript yet</p>
+          <p class="tx-empty-sub">Load a file to start analysis automatically. Enable Whisper in Settings for word-level filler detection and auto-telop.</p>
+        </div>
+      </div>
+    </div><!-- /transcript-panel -->
+
+    </div><!-- /main-area -->
+
+    <!-- H-resizer: drag handle above the waveform (resizes waveform height) -->
+    <div id="h-resizer"></div>
+
+    <!-- Waveform: full-width strip at bottom of workspace -->
+    <div id="waveform-panel">
+      <div id="waveform-bar">
+        <span id="waveform-title">Waveform</span>
+        <span id="waveform-hint">· scroll to zoom · drag to seek/draw · handles to trim</span>
+        <div id="zoom-controls">
+          <button class="btn-icon" id="btn-zoom-out" title="Zoom out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <span id="zoom-label">1×</span>
+          <button class="btn-icon" id="btn-zoom-in" title="Zoom in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <button class="btn-icon" id="btn-zoom-fit" title="Fit all"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 011-1h4"/><path d="M15 4h4a1 1 0 011 1v4"/><path d="M20 15v4a1 1 0 01-1 1h-4"/><path d="M9 20H5a1 1 0 01-1-1v-4"/></svg></button>
+          <button class="btn-icon" id="btn-follow-playhead" title="Follow playhead"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+        </div>
+      </div>
+      <div id="waveform-wrap">
+        <canvas id="wf-canvas"></canvas>
+        <div id="removal-overlays"></div>
+        <div id="draw-overlay"></div>
+        <div id="wf-playhead" style="display:none"></div>
+        <div id="wf-time-tip"></div>
+      </div>
+    </div><!-- /waveform-panel -->
+
+  </div><!-- /workspace -->
+
+  <!-- Footer -->
+  <div id="footer">
+    <button class="btn btn-ghost" id="btn-undo" disabled style="font-size:16px">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M3 13A9 9 0 1 0 6 6.2"/></svg> Undo
+    </button>
+    <button class="btn btn-ghost" id="btn-redo" disabled style="font-size:16px">
+      Redo <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M21 13A9 9 0 1 1 18 6.2"/></svg>
+    </button>
+    <div class="toolbar-sep"></div>
+    <div id="footer-stats">
+      <span class="fstat">Original <strong id="fs-orig">—</strong></span>
+      <span class="fstat">Kept <strong id="fs-kept" style="color:var(--green)">—</strong></span>
+      <span class="fstat">Cuts <strong id="fs-cuts">—</strong></span>
+      <span class="fstat" id="fs-telop-wrap" style="display:none">Telops <strong id="fs-telop">—</strong></span>
+      <span id="fs-save-status" style="font-size:16px;color:var(--text3)"></span>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<!-- Dependency preflight blocker — shown at launch when ffmpeg/ffprobe is
+     missing (see checkCaps() in modules/analysis.js). Dismissible: the app
+     is still unusable underneath, but this shouldn't trap the window shut. -->
+<div id="dep-blocker-overlay" role="alertdialog" aria-modal="true" aria-labelledby="dep-blocker-title" aria-describedby="dep-blocker-msg">
+  <div id="dep-blocker-panel">
+    <div id="dep-blocker-title">Missing required dependency</div>
+    <div id="dep-blocker-msg"></div>
+    <div id="dep-blocker-actions">
+      <button id="dep-blocker-dismiss">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- Right-click context menu on the transcript panel: show/hide deleted
+     silence & filler words (both hidden by default for a cleaner read). -->
+<div id="tx-context-menu">
+  <button class="tx-ctx-item" id="tx-ctx-silence" role="menuitemcheckbox">
+    <span class="tx-ctx-check">&#10003;</span> Show deleted silence
+  </button>
+  <button class="tx-ctx-item" id="tx-ctx-fillers" role="menuitemcheckbox">
+    <span class="tx-ctx-check">&#10003;</span> Show deleted filler words
+  </button>
+</div>
+
+<!-- Local-LLM correction review (modal) -->
+<div id="llm-review-overlay">
+  <div id="llm-review-panel">
+    <div id="llm-review-title">Suggested brand-name corrections</div>
+    <div id="llm-review-sub">Review before applying — nothing changes until you click Apply. Use ⇄ to flip a wrong direction.</div>
+    <div id="llm-review-list"></div>
+    <div id="llm-review-actions">
+      <button id="llm-review-cancel">Cancel</button>
+      <button id="llm-review-apply">Apply selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- Revert bar (shown after an LLM apply) -->
+<div id="llm-revert-bar">
+  <span>Applied LLM corrections.</span>
+  <button id="llm-revert-btn">Undo corrections</button>
+</div>
+
+<div id="shortcuts-overlay">
+  <div id="shortcuts-panel">
+    <div id="shortcuts-title">Keyboard Shortcuts</div>
+    <div class="sc-row"><kbd>Space</kbd><span class="sc-desc">Play / Pause</span></div>
+    <div class="sc-row"><kbd>←</kbd> <kbd>→</kbd><span class="sc-desc">Seek ±5 seconds</span></div>
+    <div class="sc-row"><kbd>⌘Z</kbd><span class="sc-desc">Undo</span></div>
+    <div class="sc-row"><kbd>⌘⇧Z</kbd><span class="sc-desc">Redo</span></div>
+    <div class="sc-row"><kbd>S</kbd><span class="sc-desc">Open / close Settings</span></div>
+    <div class="sc-row"><kbd>⌘E</kbd><span class="sc-desc">Export</span></div>
+    <div class="sc-row"><kbd>Esc</kbd><span class="sc-desc">Close / Cancel / Clear selection</span></div>
+    <div class="sc-row"><kbd>Del</kbd> / <kbd>⌫</kbd><span class="sc-desc">Delete selected word(s) from cut</span></div>
+    <div class="sc-row"><kbd>F</kbd><span class="sc-desc">Toggle fullscreen</span></div>
+    <div class="sc-row"><kbd>T</kbd><span class="sc-desc">Toggle telop overlay</span></div>
+    <div class="sc-row"><kbd>M</kbd><span class="sc-desc">Toggle mute</span></div>
+    <div class="sc-row"><kbd>?</kbd><span class="sc-desc">Show this panel</span></div>
+    <div style="margin-top:10px;font-size:16px;color:var(--text3)">Waveform: scroll to zoom · drag to seek or draw cuts</div>
+    <div style="margin-top:4px;font-size:16px;color:var(--text3)">Transcript: click word to seek · drag to select range · Del to cut</div>
+  </div>
+</div>
+
+<div id="recent-dropdown">
+  <div id="recent-header">Recent Sessions</div>
+  <div id="recent-list">
+    <div id="recent-empty">No recent sessions yet</div>
+  </div>
+</div>
+
+<!-- ── Export Dialog ─────────────────────────────────────────── -->
+<div id="export-dialog" role="dialog" aria-label="Export options">
+  <div id="export-tabs">
+    <button class="export-tab active" data-tab="roughcut">Rough-Cut</button>
+    <button class="export-tab" data-tab="telop">Telop</button>
+    <button class="export-tab" data-tab="subtitles">Subtitles</button>
+  </div>
+  <div id="export-body">
+    <div class="export-panel active" data-panel="roughcut">
+      <p class="export-desc">Export a Final Cut Pro FCPXML with all enabled silence and filler regions removed. Open in FCP to generate the rough cut automatically.</p>
+    </div>
+    <div class="export-panel" data-panel="telop">
+      <div class="ed-grid">
+        <div class="ed-field">
+          <label>Frame Rate</label>
+          <select id="ed-t-fps">
+            <option value="24" selected>24 fps</option>
+            <option value="23.976">23.976 fps</option>
+            <option value="25">25 fps</option>
+            <option value="29.97">29.97 fps</option>
+            <option value="30">30 fps</option>
+            <option value="59.94">59.94 fps</option>
+            <option value="60">60 fps</option>
+          </select>
+        </div>
+        <div class="ed-field">
+          <label>Resolution</label>
+          <select id="ed-t-res">
+            <option value="3840x2160" selected>4K UHD</option>
+            <option value="1920x1080">FHD 1080p</option>
+            <option value="1080x1920">Vertical</option>
+            <option value="1080x1350">4:5</option>
+          </select>
+        </div>
+        <div class="ed-field">
+          <label>Font</label>
+          <select id="ed-t-font">
+            <option value="Momochidori Heavy" selected>Momochidori Heavy</option>
+            <option value="Toppan Bunkyu Gothic">Toppan Bunkyu Gothic</option>
+            <option value="Shippori Mincho B1">Shippori Mincho B1</option>
+            <option value="Hiragino Sans">Hiragino Sans</option>
+            <option value="Hiragino Kaku Gothic Pro">Hira Kaku Gothic</option>
+          </select>
+        </div>
+        <div class="ed-field">
+          <label>Font size</label>
+          <input type="number" id="ed-t-font-size" value="92" min="10" max="500">
+        </div>
+        <div class="ed-field">
+          <label>Y offset (px)</label>
+          <input type="number" id="ed-t-pos-y" value="-420" min="-1080" max="1080">
+        </div>
+        <div class="ed-field">
+          <label>Line spacing</label>
+          <input type="number" id="ed-t-line-spacing" value="-65" min="-200" max="200">
+        </div>
+        <div class="ed-field">
+          <label>Color</label>
+          <input type="color" id="ed-t-font-color" value="#F3B500">
+        </div>
+      </div>
+      <div class="ed-format-toggle" style="margin-top:10px" title="Source: original clip timestamps — use with uncut footage (default)&#10;Edited: times adjusted to the rough-cut timeline — use when pairing with the cut FCPXML">
+        <button class="ed-timing-btn active" data-timing="source">Source timing</button>
+        <button class="ed-timing-btn" data-timing="edited">Edited timeline</button>
+      </div>
+    </div>
+    <div class="export-panel" data-panel="subtitles">
+      <p class="export-desc">Export transcript as a subtitle file, time-adjusted for all enabled cuts.</p>
+      <div class="ed-format-toggle">
+        <button class="ed-format-btn active" data-fmt="srt">SRT</button>
+        <button class="ed-format-btn" data-fmt="vtt">WebVTT</button>
+      </div>
+    </div>
+  </div>
+  <div id="export-padding-row">
+    <label>Padding</label>
+    <input type="range" id="ed-padding" min="0" max="500" step="10" value="200">
+    <span id="export-padding-val">200 ms</span>
+  </div>
+  <div id="export-footer">
+    <button class="btn" id="btn-export-cancel">Cancel</button>
+    <button class="btn btn-accent" id="btn-export-do">Export Rough-Cut</button>
+  </div>
+</div>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

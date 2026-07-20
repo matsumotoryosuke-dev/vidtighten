@@ -1,0 +1,52 @@
+name: Bug report
+description: Something isn't working right
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Load a video (format/codec, if known)
+        2. Click ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: e.g. macOS 15.2 (Sequoia)
+    validations:
+      required: true
+  - type: input
+    id: video-format
+    attributes:
+      label: Video format/codec (if the bug involves loading or analyzing a file)
+      placeholder: e.g. .mov, H.264, from an iPhone / Canon R5 / screen recording
+  - type: dropdown
+    id: whisper-backend
+    attributes:
+      label: Which transcription backend is installed?
+      options:
+        - Not sure
+        - None (whisper not installed)
+        - openai-whisper / faster-whisper
+        - WhisperX
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: >
+        If the app crashed or an analysis/export failed, check
+        `~/.preprod/logs/app.log` for anything relevant and paste it here.
+      render: shell

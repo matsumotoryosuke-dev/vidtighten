@@ -1,0 +1,46 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    name: Python tests
+    # macOS runner: pywebview is a base dependency (native file-dialog
+    # integration in web.py, app.py's WKWebView shell) and this project only
+    # ever targets macOS — no reason to gamble on Linux system-package
+    # availability for a platform this app doesn't support anyway.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Bootstrap environment
+        # Same script a contributor runs locally (see scripts/bootstrap.sh) —
+        # CI exercises the exact documented setup path, so it can't drift
+        # from what README/CONTRIBUTING tell people to do.
+        run: scripts/bootstrap.sh
+
+      - name: Run tests
+        run: uv run pytest tests/ -q
+
+  js:
+    name: JS tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run test:js -- --run

@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "preprod"
+version = "0.1.0"
+description = "Pre-production workflow: silence/filler removal + dual FCPXML export for Final Cut Pro"
+# Verified 2026-07-19 (see scripts/bootstrap.sh + README install section for the
+# full investigation). The floor and ceiling are both hard requirements of the
+# `whisperx` extra below, not guesses:
+#   floor >=3.10  — whisperx's own transitive deps (pyannote-audio,
+#                   huggingface-hub, transformers) declare requires-python >=3.10.
+#   ceiling <3.14 — whisperx pins torch~=2.8.0/torchvision~=0.23.0/torchaudio~=
+#                   2.8.0/torchcodec; none of those publish Python 3.14 wheels
+#                   yet (confirmed via PyPI file listing: cp39-cp313 exist, no
+#                   cp314). This is a torch-wheel-availability limit, not a
+#                   whisperx code incompatibility — pip/uv fail at the resolver
+#                   stage with "no wheels with a matching Python ABI tag".
+# The base app + `whisper` extra alone (no whisperx) would tolerate a wider
+# range, but this project pins one project-wide range so there is a single
+# unambiguous "supported Python" story for a first-time contributor.
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "click>=8.1",
+    "numpy>=1.24",
+    "flask>=3.0",
+    "pywebview>=5.0",
+    "tomli>=2.0;python_version<'3.11'",
+]
+
+[project.optional-dependencies]
+# Whisper transcription backends: faster-whisper (primary — CTranslate2 INT8,
+# 4-8x faster on CPU, tried first by whisper_worker.py) and openai-whisper
+# (fallback used when faster-whisper is absent or fails). Deliberately kept
+# separate from the `whisperx` extra below: openai-whisper depends on a plain
+# `torch` (any version) and faster-whisper doesn't need torch at all, so this
+# group stays comparatively light. Install with: pip install -e ".[whisper]"
+#
+# numba>=0.61.0 is pinned explicitly even though preprod never imports numba
+# directly: openai-whisper depends on an UNVERSIONED `numba` (any version
+# accepted), and no numba release before 0.61.0 ships wheels covering the
+# whole Python 3.10-3.13 range at once (0.58.x tops out at cp311, 0.59-0.60.x
+# at cp312). Left unconstrained, the resolver picks numba==0.53.1 (a 2021
+# release with no requires-python metadata at all, so it looks "universally
+# compatible" on paper) whose transitive llvmlite==0.36.0 has no cp313 wheel
+# and its sdist build script hard-fails with "Cannot install on Python
+# version 3.13.14; only versions >=3.6,<3.10 are supported." Verified via a
+# real `uv sync` attempt, not just requires-python inspection — see
+# scripts/bootstrap.sh's changelog / commit message for the failure trace.
+whisper = ["faster-whisper>=1.2.0", "openai-whisper>=20231117", "numba>=0.61.0"]
+# WhisperX forced-alignment: refines faster-whisper's ~150ms word timestamps to
+# ~20ms and adds per-word confidence scores (whisper_worker.py,
+# _run_whisperx_alignment) — this is how the app hits its word/audio sync
+# accuracy target. whisper_worker.py degrades gracefully when this extra is
+# absent (catches ImportError, falls back to faster-whisper's own timestamps;
+# web.py surfaces "Install whisperx for ±20ms accuracy" to the user), so this
+# is genuinely optional at runtime.
+#
+# Kept as ITS OWN extra, separate from `whisper` above, because whisperx pulls
+# in a much heavier tree on top of torch: torchaudio, torchvision, torchcodec,
+# pyannote-audio (+ its own audio/core/database/metrics/pipeline sub-packages),
+# pytorch-lightning, transformers, huggingface-hub — several GB total, vs.
+# `whisper` alone which is a comparatively small install. A contributor who
+# wants a fast install / CI without the full ML stack can install `whisper`
+# alone and get a fully working (if less precise) app.
+#
+# Depends on the `whisper` extra (via the self-reference below) because
+# alignment is only ever invoked on a transcription's output — whisperx alone,
+# without a transcription backend, is never reachable in whisper_worker.py.
+# Install with: pip install -e ".[whisperx]"
+whisperx = ["preprod[whisper]", "whisperx>=3.8.6"]
+# Japanese morphological analysis — telops/lines cut only at 文節 (phrase)
+# boundaries (where a 、/。 would be appropriate), never mid-word.  Optional: the
+# telop splitter falls back to a character heuristic when absent.  unidic-lite
+# bundles the dictionary (~50 MB) so no separate download step is needed.
+# Install with: pip install preprod[japanese]
+japanese = ["fugashi>=1.3", "unidic-lite>=1.0.8"]
+# Dev/test tooling. Install with: pip install preprod[dev]
+dev = ["pytest>=8.0", "pytest-timeout>=2.0"]
+
+[project.scripts]
+preprod = "preprod.cli:main"
+preprod-web = "preprod.web:run_web"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+preprod = ["static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 30          # hard kill per-test; prevents hung whisper/ffmpeg from stacking
+timeout_method = "signal"  # signal-based: actually interrupts C-extension code (thread-mode cannot)
+markers = [
+    "slow: integration tests that use real media files (deselect with '-m not slow')",
+]

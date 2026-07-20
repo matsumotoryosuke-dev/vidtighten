@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "scripts": {
+    "test:js": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.4"
+  }
+}

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/matsumotoryosuke-dev/vid-tighten/security/advisories/new
+    about: Please report security issues privately rather than as a public issue — see SECURITY.md.
