@@ -51,8 +51,8 @@ it, and improve it together.
 ## Development
 
 ```bash
-git clone https://github.com/matsumotoryosuke-dev/vid-tighten.git
-cd vid-tighten
+git clone https://github.com/matsumotoryosuke-dev/vidtighten.git
+cd vidtighten
 scripts/bootstrap.sh   # installs uv if needed, pins Python 3.13, resolves
                         # every dependency from the committed lockfile
 npm install
